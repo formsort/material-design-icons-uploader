@@ -42,7 +42,7 @@ def write_svg_icon_name_filename_tuples(svg_icons):
     f.close()
 
 
-def get_svg_icon_list():
+def get_svg_icon_list(ignore_patterns=[]):
     """
     {
         [icon_name:string]: {
@@ -61,8 +61,13 @@ def get_svg_icon_list():
         (dirname, filename) = path.split(pathname)
         r = re.match(r"ic_([a-z0-9_]+?)_?([0-9]+)px.svg", filename)
         (icon_name, icon_size) = r.groups(1)
+
+        if ignore_patterns and any(map(lambda pattern: re.match(pattern, filename), ignore_patterns)):
+            continue
+
         if icon_name not in icons:
             icons[icon_name] = {}
+
         icons[icon_name][int(icon_size)] = {
             'pathname': pathname,
             'filename': filename,
@@ -73,13 +78,14 @@ def get_svg_icon_list():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="material-design-icons-uploader")
     parser.add_argument('--s3bucket', type=str, help="s3://your-bucket/your/path/")
+    parser.add_argument('--ignore', type=str, nargs='+', help="""List of regular expressions to ignore, like --ignore "^ic_battery_(?:charging_)?[0-9]+" "^ic_signal_wifi_" "^ic_signal_cellular\"""")
     args = parser.parse_args()
 
-    svg_icons = get_svg_icon_list()
+    svg_icons = get_svg_icon_list(args.ignore)
 
     write_svg_icon_name_list(svg_icons)
     write_svg_icon_name_filename_tuples(svg_icons)
-
+    
     if args.s3bucket:
         S3_BUCKET_PATH = "s3://usercontent.formsort.com/formsort/icons/"
         upload_svg_icons_to_s3(svg_icons, S3_BUCKET_PATH)
